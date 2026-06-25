@@ -46,27 +46,30 @@ A record can belong to multiple blocks. A `detected_pairs` set ensures each pair
 
 #### Signal Points
 
-| Signal                         | Points  | Condition                                                           |
-| :----------------------------- | :-----: | :------------------------------------------------------------------ |
-| Primary email — exact          | **+50** | Identical primary email addresses                                   |
-| Primary email — close          | **+30** | Same domain, usernames differ only by `.` or `_`                    |
-| Alternate email — exact        | **+30** | Identical alternate email addresses                                 |
-| Alternate email — close        | **+15** | Same domain, usernames differ only by `.` or `_`                    |
-| Mobile phone match             | **+30** | Shared mobile number (personal → higher confidence)                 |
-| Office / alternate phone match | **+15** | Shared office phone (often shared across a team → lower confidence) |
-| First name — near              |   +20   | Similarity ≥ 95% (includes nickname matches)                        |
-| First name — fuzzy             |   +10   | Similarity ≥ 85%                                                    |
-| Last name — near               |   +20   | Similarity ≥ 95%                                                    |
-| Last name — fuzzy              |   +10   | Similarity ≥ 85%                                                    |
-| Company name — near            |   +15   | Similarity ≥ 90%                                                    |
-| Company name — fuzzy           |   +8    | Similarity ≥ 80%                                                    |
-| Title — exact                  |   +12   | Identical job titles                                                |
-| Title — executive              |   +10   | Executive-level variations (e.g., `CEO` vs `President`)             |
-| Title — fuzzy                  |   +8    | Similarity ≥ 85% (e.g., `Senior Manager` vs `Sr. Manager`)          |
-| Title — loose                  |   +5    | Similarity ≥ 70% (e.g., `Director` vs `Associate Director`)         |
-| Role Code — exact              |   +8    | Identical role codes                                                |
-| Role Code — category           |   +6    | Same functional category                                            |
-| Role Code — fuzzy              |   +5    | Similarity ≥ 80%                                                    |
+| Signal                  | Points  | Condition                                                                 |
+| :---------------------- | :-----: | :------------------------------------------------------------------------ |
+| Primary email — exact   | **+50** | Identical primary email addresses                                         |
+| Primary email — close   | **+30** | Same domain, usernames differ only by `.` or `_`                          |
+| Alternate email — exact | **+30** | Identical alternate email addresses                                       |
+| Alternate email — close | **+15** | Same domain, usernames differ only by `.` or `_`                          |
+| Mobile ↔ Mobile match   | **+30** | Both records share the same mobile number (personal → highest confidence) |
+| Mobile ↔ Office match   | **+20** | Mobile on one record matches an office phone on the other                 |
+| Office ↔ Office match   | **+10** | Shared office phone only (often shared across a team → lowest confidence) |
+| First name — near       |   +20   | Similarity ≥ 95% (includes nickname matches)                              |
+| First name — fuzzy      |   +10   | Similarity ≥ 85%                                                          |
+| First name — weak       | **−15** | Similarity ≥ 60% — names are different enough to reduce confidence        |
+| First name — mismatch   | **−25** | Similarity < 60% — strong signal these are different people               |
+| Last name — near        |   +20   | Similarity ≥ 95%                                                          |
+| Last name — fuzzy       |   +10   | Similarity ≥ 85%                                                          |
+| Company name — near     |   +10   | Similarity ≥ 90%                                                          |
+| Company name — fuzzy    |   +5    | Similarity ≥ 80%                                                          |
+| Title — exact           |   +10   | Identical job titles                                                      |
+| Title — executive       |   +5    | Executive-level variations (e.g., `CEO` vs `President`)                   |
+| Title — fuzzy           |   +3    | Similarity ≥ 85% (e.g., `Senior Manager` vs `Sr. Manager`)                |
+| Role Code — exact       |   +5    | Identical role codes                                                      |
+| Role Code — category    |   +2    | Same functional category                                                  |
+
+> **First name penalties** prevent false positives when two people share a last name, a phone, or an email domain but have clearly different first names. Without penalties, a shared office phone between _Robert_ and _Rachel_ Lee could accumulate enough points to cross the threshold — the penalty pulls the score back down.
 
 #### 🎯 Duplicate Threshold: 70 Points
 
@@ -76,16 +79,18 @@ A pair is flagged as a duplicate when its total score reaches **70 or more**.
 
 | Combination                                                                                   | Score | Result       |
 | :-------------------------------------------------------------------------------------------- | :---: | :----------- |
-| Mobile (+30) + First Name near (+20) + Last Name near (+20)                                   |  70   | ✅ Duplicate |
+| Mobile↔Mobile (+30) + First Name near (+20) + Last Name near (+20)                            |  70   | ✅ Duplicate |
 | Exact primary email (+50) + Last Name near (+20)                                              |  70   | ✅ Duplicate |
-| Close primary email (+30) + First Name near (+20) + Last Name near (+20) + Company near (+15) |  85   | ✅ Duplicate |
+| Close primary email (+30) + First Name near (+20) + Last Name near (+20) + Company near (+10) |  80   | ✅ Duplicate |
+| Exact alternate email (+30) + Mobile↔Mobile (+30) + Last Name near (+20)                      |  80   | ✅ Duplicate |
 
 **Examples that are safely rejected:**
 
-| Combination                                                       | Score | Result                                                   |
-| :---------------------------------------------------------------- | :---: | :------------------------------------------------------- |
-| First Name near (+20) + Last Name near (+20) + Company near (+15) |  55   | ❌ Rejected — same name, same company, no contact signal |
-| Office phone (+15) + First Name near (+20)                        |  35   | ❌ Rejected — shared office line, not enough signal      |
+| Combination                                                            | Score | Result                                                             |
+| :--------------------------------------------------------------------- | :---: | :----------------------------------------------------------------- |
+| First Name near (+20) + Last Name near (+20) + Company near (+10)      |  50   | ❌ Rejected — same name and company, no contact signal             |
+| Office↔Office (+10) + First Name near (+20) + Last Name near (+20)     |  50   | ❌ Rejected — shared office line not enough on its own             |
+| Mobile↔Office (+20) + Last Name near (+20) + First Name mismatch (−25) |  15   | ❌ Rejected — penalty correctly separates _Robert_ vs _Rachel_ Lee |
 
 ---
 
@@ -107,8 +112,6 @@ Confirmed pairs are written to `contact_duplicate_report.xlsx`. Every row contai
 
 ---
 
-## 🛠️ Usage
-
-File upload and processing is all done through the graphical user interface (GUI).The report is saved to `contact_duplicate_report.xlsx` in the working directory. Both `.csv` and `.xlsx`/`.xlsm` input files are supported.
+The report is saved to `contact_duplicate_report.xlsx` in the working directory. Both `.csv` and `.xlsx`/`.xlsm` input files are supported.
 
 ---

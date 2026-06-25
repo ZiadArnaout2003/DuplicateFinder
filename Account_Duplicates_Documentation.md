@@ -32,7 +32,7 @@ Records are assigned block keys and only records sharing at least one key are co
 | Pass        | Key format                           | Fields used                  |
 | :---------- | :----------------------------------- | :--------------------------- |
 | 1 — Name    | `name_{first 8 chars of first word}` | Account Name (normalized)    |
-| 2 — Phone   | `ph_{first 7 digits}`                | Phone, Secondary Phone       |
+| 2 — Phone   | `ph_{first 7 digits}`                | Phone                        |
 | 3 — Website | `web_{domain prefix}`                | Website (normalized)         |
 | 4 — Address | `addr_{zip5}_{street prefix}`        | Billing Zip + Billing Street |
 
@@ -52,17 +52,17 @@ A record can belong to multiple blocks. A `detected_pairs` set ensures each pair
 
 #### Signal Points
 
-| Signal                       | Points  | Condition                                                               |
-| :--------------------------- | :-----: | :---------------------------------------------------------------------- |
-| Website — exact              | **+40** | Normalized domains are identical                                        |
-| Website — fuzzy              |   +25   | Similarity > 90%                                                        |
-| Phone match                  | **+40** | Any phone field intersects (Phone, Secondary Phone, Fax, Secondary Fax) |
-| Street + zip + country match | **+35** | Billing or Secondary address matches exactly across all three fields    |
-| Street match only            |   +20   | Street matches, zip differs                                             |
-| Zip match only               |   +15   | Zip matches, street differs                                             |
-| Account name — near          | **+30** | Similarity ≥ 95%                                                        |
-| Account name — fuzzy         |   +15   | Similarity ≥ 85%                                                        |
-| Account name — loose         |   +5    | Similarity ≥ 75%                                                        |
+| Signal                       | Points  | Condition                                                            |
+| :--------------------------- | :-----: | :------------------------------------------------------------------- |
+| Website — exact              | **+40** | Normalized domains are identical                                     |
+| Website — fuzzy              |   +25   | Similarity > 90%                                                     |
+| Phone match                  | **+40** | Any phone field intersects (Phone, Fax)                              |
+| Street + zip + country match | **+35** | Billing or Secondary address matches exactly across all three fields |
+| Street match only            |   +20   | Street matches, zip differs                                          |
+| Zip match only               |   +15   | Zip matches, street differs                                          |
+| Account name — near          | **+30** | Similarity ≥ 95%                                                     |
+| Account name — fuzzy         |   +15   | Similarity ≥ 85%                                                     |
+| Account name — loose         |   +5    | Similarity ≥ 75%                                                     |
 
 #### 🎯 Duplicate Threshold: 70 Points
 
@@ -107,6 +107,6 @@ Confirmed pairs are written to `account_duplicate_report.xlsx`. Every row contai
 
 ## 🛠️ Usage
 
-File upload and processing is all done through the graphical user interface (GUI).The report is saved to `account_duplicate_report.xlsx` in the working directory. Both `.csv` and `.xlsx`/`.xlsm` input files are supported.
+The report is saved to `account_duplicate_report.xlsx` in the working directory. Both `.csv` and `.xlsx`/`.xlsm` input files are supported.
 
 ---
